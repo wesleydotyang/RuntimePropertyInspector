@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VariablesViewState
+   version = "1.0">
+   <ContextStates>
+      <ContextState
+         contextName = "+[FFPropertyInspector expandInstanceNode:]:FFPropertyInspector.m">
+      </ContextState>
+      <ContextState
+         contextName = "+[FFPropertyInspector valueFromInstance:forPropertyNamedKey:]:FFPropertyInspector.m">
+      </ContextState>
+      <ContextState
+         contextName = "-[FFPropertyInspectView appendTableData:forNode:]:FFPropertyInspectView.m">
+      </ContextState>
+      <ContextState
+         contextName = "-[FFPropertyInspectView tableView:didSelectRowAtIndexPath:]:FFPropertyInspectView.m">
+      </ContextState>
+      <ContextState
+         contextName = "-[FFPropertyCell layoutSubviews]:FFPropertyInspectView.m">
+      </ContextState>
+      <ContextState
+         contextName = "+[FFPropertyInspector parsePropertiesForClass:withInstanceNode:]:FFPropertyInspector.m">
+      </ContextState>
+      <ContextState
+         contextName = "-[ViewController viewDidLoad]:ViewController.m">
+      </ContextState>
+      <ContextState
+         contextName = "-[FFPropertyCell setNodeData:]:FFPropertyInspectView.m">
+      </ContextState>
+      <ContextState
+         contextName = "+[FFPropertyInspector valueFromNode:forPropertyNamedKey:]:FFPropertyInspector.m">
+      </ContextState>
+   </ContextStates>
+</VariablesViewState>
