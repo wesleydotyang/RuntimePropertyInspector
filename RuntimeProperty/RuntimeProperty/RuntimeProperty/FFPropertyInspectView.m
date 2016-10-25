@@ -141,7 +141,7 @@ typedef void(^InputValueCallback)(id value);
 
 -(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSArray *eidtableTypes = @[@"int",@"float",@"double",@"long",@"NSString",@"CGRect",@"CGSize"];
+    NSArray *eidtableTypes = @[@"BOOL",@"int",@"float",@"double",@"long",@"long long",@"unsigned long",@"unsigned long long",@"NSString",@"CGRect",@"CGSize",@"CGPoint"];
     FFInstanceNode *node = self.tableDisplayNodes[indexPath.row];
     if ([self isNodeExpanded:node] == NO) {
         if ([eidtableTypes containsObject:node.instanceType]) {
@@ -161,11 +161,14 @@ typedef void(^InputValueCallback)(id value);
 -(void)modifyNode:(FFInstanceNode*)node
 {
 
-    
-    if (    [node.instanceType isEqualToString: @"int"]
+    if (    [node.instanceType isEqualToString: @"BOOL"]
+         || [node.instanceType isEqualToString: @"int"]
          || [node.instanceType isEqualToString:@"float"]
          || [node.instanceType isEqualToString:@"double"]
          || [node.instanceType isEqualToString:@"long"]
+         || [node.instanceType isEqualToString:@"long long"]
+         || [node.instanceType isEqualToString:@"unsigned long"]
+         || [node.instanceType isEqualToString:@"unsigned long long" ]
          ) {
         __weak FFPropertyInspectView *weakSelf = self;
         [self setInputValueCallback:^(id value){
@@ -216,6 +219,17 @@ typedef void(^InputValueCallback)(id value);
         }];
         CGSize originValue = [node.rawValue CGSizeValue];
         [self inputTextValueWithDefault:NSStringFromCGSize(originValue)];
+        
+    }else if([node.instanceType isEqualToString:@"CGPoint"]){
+        __weak FFPropertyInspectView *weakSelf = self;
+        [self setInputValueCallback:^(id value){
+            NSString *strValue = value;
+            CGPoint newValue = CGPointFromString(strValue);
+            [FFPropertyInspector alterInstance:node toValue:[NSValue valueWithCGPoint:newValue]];
+            [weakSelf reloadTableData];
+        }];
+        CGPoint originValue = [node.rawValue CGPointValue];
+        [self inputTextValueWithDefault:NSStringFromCGPoint(originValue)];
         
     }
 }

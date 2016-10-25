@@ -14,16 +14,17 @@
 
 @interface TestObject : NSObject
 {
-    @public
+//    @public
     FFPropertyInspectView *inspectView;
-    int testInt;
-    CGRect testRect;
-    CGSize _testSize;
-
+    int _testInt;
+    CGRect _testRect;
+    CGPoint _testPoint;
+    long long longValue;
 }
 //@property (weak, nonatomic)  FFPropertyInspectView *inspectView;
 @property (nonatomic) UIImage *image;
 @property (nonatomic) CGRect rect;
+@property (nonatomic) CGSize size;
 @property (nonatomic) CATransform3D transform;
 @property (nonatomic) NSArray *testArray;
 @property (nonatomic) NSString *testStr;
