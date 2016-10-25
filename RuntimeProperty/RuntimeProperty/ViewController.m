@@ -21,10 +21,13 @@
     CGSize _testSize;
 
 }
-@property (weak, nonatomic)  FFPropertyInspectView *inspectView;
+//@property (weak, nonatomic)  FFPropertyInspectView *inspectView;
 @property (nonatomic) UIImage *image;
 @property (nonatomic) CGRect rect;
 @property (nonatomic) CATransform3D transform;
+@property (nonatomic) NSArray *testArray;
+@property (nonatomic) NSString *testStr;
+
 @end
 
 @implementation TestObject
@@ -38,6 +41,7 @@
 }
 @property (weak, nonatomic) IBOutlet FFPropertyInspectView *inspectView;
 @property (nonatomic,strong) NSDictionary *testDic;
+
 @property (nonatomic) CGRect rect;
 
 @end
@@ -53,8 +57,7 @@
     TestObject *testObj = [TestObject new];
 //    testObj->testRect = CGRectMake(1, 1, 2, 3);
     testObj.rect = CGRectMake(0, 1, 2, 3);
-  
- 
+    testObj.testArray = @[@4,@1,@2];
     // Do any additional setup after loading the view, typically from a nib.
     self.testDic = @{@"key1":@"value1",@"key2":@2,@"key3":@"3",@"key4":@"k4"};
 //    testObj->inspectView = self.inspectView;

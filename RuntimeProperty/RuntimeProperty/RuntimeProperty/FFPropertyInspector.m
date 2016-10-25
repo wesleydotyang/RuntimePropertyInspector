@@ -150,10 +150,12 @@ static NSString *extractStructName(NSString *typeEncodeString)
         
         #define IF_STRUCT_OF_TYPE(_type, _methodName) \
         if ([typeString isEqualToString:@#_type]) {\
+                if(object){\
                 ptrdiff_t offset = ivar_getOffset(var);\
                 unsigned char *stuffBytes = (unsigned char *)(__bridge void *)object;\
                 _type result = * ((_type *)(stuffBytes + offset));\
                 inode.rawValue = [NSValue _methodName:result];\
+                }\
                 inode.rawValueValid = YES;\
                 ivarTypeName = @#_type;\
         }
@@ -163,9 +165,16 @@ static NSString *extractStructName(NSString *typeEncodeString)
                 id value = object_getIvar(object, var);
                 inode.rawValue = value;
                 inode.rawValueValid = YES;
+                inode.isObject = YES;
                 if (object_getClass(value)) {
                     ivarTypeName = NSStringFromClass(object_getClass(value));
-                    inode.isObject = YES;
+                }else{
+                    NSString *type = [NSString stringWithCString:typeEncoding encoding:NSASCIIStringEncoding];
+                    if (type.length>3) {
+                        ivarTypeName = [type substringWithRange:NSMakeRange(2, type.length-3)];
+                    }else{
+                        ivarTypeName = @"id";
+                    }
                 }
             }
                 break;
@@ -190,7 +199,9 @@ static NSString *extractStructName(NSString *typeEncodeString)
                 IF_STRUCT_OF_TYPE(CGPoint,valueWithCGPoint)
                 IF_STRUCT_OF_TYPE(CGSize,valueWithCGSize)
                 IF_STRUCT_OF_TYPE(NSRange,valueWithRange)
-                NSLog(@"unHandeledStruct %@",typeString);
+                if (ivarTypeName==nil) {
+                    NSLog(@"unHandeledStruct %@",typeString);
+                }
                 break;
             }
             case 'v':
@@ -286,6 +297,8 @@ static NSString *extractStructName(NSString *typeEncodeString)
     }
 
 }
+
+
 
 #define IF_CALL_RET_STRUCT(_type, _methodName) \
 if ([typeString rangeOfString:@#_type].location != NSNotFound) {    \
@@ -490,6 +503,132 @@ break; \
     // Falls back to raw encoding if none of the above.
     return typeEncoding;
 }
+
++(BOOL)alterInstance:(FFInstanceNode *)instance toValue:(id)value
+{
+    if ([instance isKindOfClass:[FFPropertyNode class]]) {
+        return [self alterProperty:(FFPropertyNode*)instance toValue:value];
+    }else if([instance isKindOfClass:[FFIVarNode class]]){
+        return [self alterIvar:(FFIVarNode*)instance toValue:value];
+    }
+    return NO;
+}
+
++(BOOL)alterProperty:(FFPropertyNode *)propertyNode toValue:(id)newValue
+{
+    FFInstanceNode *objectNode = propertyNode.parentNode;
+
+    id obj = objectNode.rawValue;
+    NSString *propertyName = propertyNode.instanceName;
+    
+    if (obj==nil || propertyName==nil || propertyName.length==0) {
+        return NO;
+    }
+    
+    Class class = object_getClass(obj);
+    if (class == Nil) {
+        return NO;
+    }
+    
+    objc_property_t property = class_getProperty(class,[propertyName cStringUsingEncoding:NSASCIIStringEncoding]);
+    SEL setter;
+    const char* setterName = property_copyAttributeValue(property, "S");
+    if (setterName==NULL)
+    {
+        NSString *firstLetter = [propertyName substringToIndex:1];
+        NSString *otherLetter = [propertyName substringFromIndex:1];
+        NSString *sName = [NSString stringWithFormat:@"set%@%@:",firstLetter.capitalizedString,otherLetter];
+        setter = NSSelectorFromString(sName);
+    }
+    else
+    {
+        setter = sel_getUid(setterName);
+    }
+    
+    
+    @try {
+        
+        if (![obj respondsToSelector:setter]) {
+            NSLog(@"does not support setter");
+            return NO;
+        }
+        
+        NSMethodSignature* sig = [obj methodSignatureForSelector:setter];
+        if (sig) {
+
+            NSInvocation *invoke = [NSInvocation invocationWithMethodSignature:sig];
+            invoke.selector = setter;
+            //get raw value
+            if (propertyNode.isObject) {
+                [invoke setArgument:&newValue atIndex:2];
+            }else{
+#define IF_TYPE_AND_SET_INVOKE(type,convert) \
+if ([propertyNode.instanceType isEqualToString:@#type]) {\
+    type raw = [newValue convert];\
+    [invoke setArgument:&raw atIndex:2];\
+}
+                IF_TYPE_AND_SET_INVOKE(CGRect,CGRectValue)
+                else IF_TYPE_AND_SET_INVOKE(BOOL,boolValue)
+                else IF_TYPE_AND_SET_INVOKE(int,intValue)
+                else IF_TYPE_AND_SET_INVOKE(unsigned int,unsignedIntValue)
+                else IF_TYPE_AND_SET_INVOKE(float,floatValue)
+                else IF_TYPE_AND_SET_INVOKE(double,doubleValue)
+                else IF_TYPE_AND_SET_INVOKE(char,charValue)
+                else IF_TYPE_AND_SET_INVOKE(unsigned char,unsignedCharValue)
+                else return NO;
+                
+                if ([propertyNode.instanceType isEqualToString:@"CGRect"]) {
+                    CGRect raw = [newValue CGRectValue];
+                    [invoke setArgument:&raw atIndex:2];
+                }else if([propertyNode.instanceType isEqualToString:@"BOOL"]){
+                    BOOL raw = [newValue boolValue];
+                    [invoke setArgument:&raw atIndex:2];
+                }else if([propertyNode.instanceType isEqualToString:@"int"]){
+                    int raw = [newValue intValue];
+                    [invoke setArgument:&raw atIndex:2];
+                }else{
+                    return NO;
+                }
+            }
+            [invoke invokeWithTarget:obj];
+            
+            propertyNode.rawValue = newValue;
+            return YES;
+        }else{
+            NSLog(@"sig nil for %@",propertyName);
+        }
+        return NO;
+        
+    } @catch (NSException *exception) {
+        return NO;
+    } @finally {
+        
+    }
+
+    
+    return NO;
+}
+
++(BOOL)alterIvar:(FFIVarNode*)ivar toValue:(id)value
+{
+    FFInstanceNode *objectNode = ivar.parentNode;
+    
+    if (!objectNode || !ivar) {
+        return NO;
+    }
+    
+    @try {
+        [objectNode.rawValue setValue:value forKey:ivar.instanceName];
+        ivar.rawValue = value;
+    } @catch (NSException *exception) {
+        NSLog(@"%@",exception.description);
+        return NO;
+    } @finally {
+    }
+    return YES;
+}
+
+
 
 @end
 

@@ -14,9 +14,13 @@
 +(FFInstanceNode*)nodeDataForInstance:(NSObject*)instance;
 +(void)expandInstanceNode:(FFInstanceNode*)instanceNode;
 
-+(void)parsePropertiesForClass:(Class)cls withInstanceNode:(FFInstanceNode*)node;
-+(id)getReturnValueForInvocation:(NSInvocation*)invocation isReturnValid:(BOOL*)isValidReturn;
-+(id)valueForObj:(id)obj  forPropertyNamedKey:(NSString*)propertyName isReturnValid:(BOOL*)isReturnValid;
++(BOOL)alterInstance:(FFInstanceNode*)instance toValue:(id)value;
+
+//alter property value
++(BOOL)alterProperty:(FFPropertyNode*)property toValue:(id)value;
+
+//alter ivar value
++(BOOL)alterIvar:(FFIVarNode*)ivar toValue:(id)value;
 
 
 @end

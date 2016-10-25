@@ -22,6 +22,27 @@
 {
     return [NSString stringWithFormat:@"%@ %@",self.instanceType,self.instanceName];
 }
+
+-(FFIVarNode *)ivarNamed:(NSString *)name
+{
+    for (FFIVarNode *ivar in self.ivars) {
+        if ([ivar.instanceName isEqualToString:name]) {
+            return ivar;
+        }
+    }
+    return nil;
+}
+
+-(FFPropertyNode *)propertyNamed:(NSString *)name
+{
+    for (FFPropertyNode *prop in self.properties) {
+        if ([prop.instanceName isEqualToString:name]) {
+            return prop;
+        }
+    }
+    return nil;
+}
+
 @end
 
 

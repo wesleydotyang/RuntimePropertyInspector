@@ -11,7 +11,7 @@
 
 #define INDENT_DISTANCE_PER_LEVEL  20
 
-
+typedef void(^InputValueCallback)(id value);
 
 
 @interface FFPropertyCell : UITableViewCell
@@ -21,7 +21,7 @@
 +(CGFloat)heightForNode:(FFInstanceNode*)node totalWid:(CGFloat)totalWid;
 @end
 
-@interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource>
+@interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource,UIAlertViewDelegate>
 
 @property (nonatomic) UITableView *tableView;
 
@@ -29,6 +29,7 @@
 
 @property (nonatomic,strong) NSArray<FFInstanceNode*> *tableDisplayNodes;
 
+@property (nonatomic,copy) InputValueCallback inputValueCallback;
 @end
 
 @implementation FFPropertyInspectView
@@ -140,14 +141,107 @@
 
 -(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    NSArray *eidtableTypes = @[@"int",@"float",@"double",@"long",@"NSString",@"CGRect",@"CGSize"];
     FFInstanceNode *node = self.tableDisplayNodes[indexPath.row];
     if ([self isNodeExpanded:node] == NO) {
-        [FFPropertyInspector expandInstanceNode:node];
-        [self setNode:node expanded:YES];
-        [self reloadTableData];
+        if ([eidtableTypes containsObject:node.instanceType]) {
+            [self modifyNode:node];
+        }else{
+            [FFPropertyInspector expandInstanceNode:node];
+            [self setNode:node expanded:YES];
+            [self reloadTableData];
+        }
+        
     }else{
         [self setNode:node expanded:NO];
         [self reloadTableData];
+    }
+}
+
+-(void)modifyNode:(FFInstanceNode*)node
+{
+
+    
+    if (    [node.instanceType isEqualToString: @"int"]
+         || [node.instanceType isEqualToString:@"float"]
+         || [node.instanceType isEqualToString:@"double"]
+         || [node.instanceType isEqualToString:@"long"]
+         ) {
+        __weak FFPropertyInspectView *weakSelf = self;
+        [self setInputValueCallback:^(id value){
+            NSString *strValue = value;
+            NSNumber *numValue = @0;
+            if (strValue) {
+                NSNumberFormatter *f = [[NSNumberFormatter alloc] init];
+                f.numberStyle = NSNumberFormatterDecimalStyle;
+                numValue = [f numberFromString:strValue];
+            }
+            if (numValue) {
+                [FFPropertyInspector alterInstance:node toValue:numValue];
+                [weakSelf reloadTableData];
+            }else{
+                [FFPropertyInspectView alertMsg:@"not a valid input"];
+            }
+        }];
+        NSNumber *numValue = node.rawValue;
+        [self inputTextValueWithDefault:numValue.stringValue];
+        
+    }else if([node.instanceType isEqualToString:@"NSString"]){
+        __weak FFPropertyInspectView *weakSelf = self;
+        [self setInputValueCallback:^(id value){
+            NSString *strValue = value;
+            [FFPropertyInspector alterInstance:node toValue:strValue];
+            [weakSelf reloadTableData];
+        }];
+        [self inputTextValueWithDefault:node.rawValue];
+        
+    }else if([node.instanceType isEqualToString:@"CGRect"]){
+        __weak FFPropertyInspectView *weakSelf = self;
+        [self setInputValueCallback:^(id value){
+            NSString *strValue = value;
+            CGRect rectValue = CGRectFromString(strValue);
+            [FFPropertyInspector alterInstance:node toValue:[NSValue valueWithCGRect:rectValue]];
+            [weakSelf reloadTableData];
+        }];
+        CGRect rectValue = [node.rawValue CGRectValue];
+        [self inputTextValueWithDefault:NSStringFromCGRect(rectValue)];
+        
+    }else if([node.instanceType isEqualToString:@"CGSize"]){
+        __weak FFPropertyInspectView *weakSelf = self;
+        [self setInputValueCallback:^(id value){
+            NSString *strValue = value;
+            CGSize newValue = CGSizeFromString(strValue);
+            [FFPropertyInspector alterInstance:node toValue:[NSValue valueWithCGSize:newValue]];
+            [weakSelf reloadTableData];
+        }];
+        CGSize originValue = [node.rawValue CGSizeValue];
+        [self inputTextValueWithDefault:NSStringFromCGSize(originValue)];
+        
+    }
+}
+
+
++(void)alertMsg:(NSString*)msg
+{
+    [[[UIAlertView alloc] initWithTitle:nil message:msg delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil, nil] show];
+}
+
+-(void)inputTextValueWithDefault:(NSString*)defaultValue
+{
+    
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Input new value" message:nil delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"OK", nil];
+    alert.alertViewStyle = UIAlertViewStylePlainTextInput;
+    if (defaultValue) {
+        [alert textFieldAtIndex:0].text = defaultValue;
+    }
+    [alert show];
+}
+
+-(void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
+{
+    if (buttonIndex == alertView.firstOtherButtonIndex) {
+        UITextField *tf = [alertView textFieldAtIndex:0];
+        self.inputValueCallback(tf.text);
     }
 }
 
