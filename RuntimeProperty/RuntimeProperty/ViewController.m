@@ -11,6 +11,8 @@
 #import "FFPropertyInspector.h"
 #import "AppDelegate.h"
 #import <objc/runtime.h>
+#import <WebKit/WebKit.h>
+#import <JavaScriptCore/JavaScriptCore.h>
 
 @interface TestObject : NSObject
 {
@@ -27,8 +29,10 @@
 @property (nonatomic) CGSize size;
 @property (nonatomic) CATransform3D transform;
 @property (nonatomic) NSArray *testArray;
-@property (nonatomic) NSString *testStr;
+@property (nonatomic,strong) NSDictionary *testDic;
 
+@property (nonatomic) NSString *testStr;
+@property (nonatomic) JSContext *vm;
 @end
 
 @implementation TestObject
@@ -41,7 +45,6 @@
 @interface ViewController (){
 }
 @property (weak, nonatomic) IBOutlet FFPropertyInspectView *inspectView;
-@property (nonatomic,strong) NSDictionary *testDic;
 
 @property (nonatomic) CGRect rect;
 
@@ -58,15 +61,22 @@
     TestObject *testObj = [TestObject new];
 //    testObj->testRect = CGRectMake(1, 1, 2, 3);
     testObj.rect = CGRectMake(0, 1, 2, 3);
-    testObj.testArray = @[@4,@1,@2];
+    testObj.testArray = [NSMutableArray arrayWithArray:@[@4,@1,@2]];
     // Do any additional setup after loading the view, typically from a nib.
-    self.testDic = @{@"key1":@"value1",@"key2":@2,@"key3":@"3",@"key4":@"k4"};
+    testObj.testDic = @{@"key1":@"value1",@"key2":@2,@"key3":@"3",@"key4":@"k4"};
 //    testObj->inspectView = self.inspectView;
 //    testObj->testInt = 5;
+    testObj.vm = [[JSContext alloc] init];
+    testObj.image = [UIImage imageNamed:@"test"];
     self.inspectView.inspectingObject = testObj;
     
     AppDelegate *app = [UIApplication sharedApplication].delegate;
     id var = [app valueForKeyPath:@"testVar"];
+    
+    [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer * _Nonnull timer) {
+        id obj = self.inspectView.inspectingObject;
+        NSLog(@"");
+    }];
     
 }
 

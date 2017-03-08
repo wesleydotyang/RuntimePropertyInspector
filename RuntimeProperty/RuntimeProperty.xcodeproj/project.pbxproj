@@ -17,6 +17,7 @@
 		C94AA43E1CE1CC9E00DF3C06 /* FFPropertyInspector.m in Sources */ = {isa = PBXBuildFile; fileRef = C94AA43D1CE1CC9E00DF3C06 /* FFPropertyInspector.m */; };
 		C94AA4411CE1CF1E00DF3C06 /* FFPropertyInspectView.m in Sources */ = {isa = PBXBuildFile; fileRef = C94AA4401CE1CF1E00DF3C06 /* FFPropertyInspectView.m */; };
 		C94AA4831CE2D99200DF3C06 /* FFInstanceNode.m in Sources */ = {isa = PBXBuildFile; fileRef = C94AA4821CE2D99200DF3C06 /* FFInstanceNode.m */; };
+		C9CEF6A21E6FE1DC00B092EF /* FFPropertyViewerView.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +50,8 @@
 		C94AA4401CE1CF1E00DF3C06 /* FFPropertyInspectView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFPropertyInspectView.m; sourceTree = "<group>"; };
 		C94AA4811CE2D99200DF3C06 /* FFInstanceNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFInstanceNode.h; sourceTree = "<group>"; };
 		C94AA4821CE2D99200DF3C06 /* FFInstanceNode.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFInstanceNode.m; sourceTree = "<group>"; };
+		C9CEF6A01E6FE1DC00B092EF /* FFPropertyViewerView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFPropertyViewerView.h; sourceTree = "<group>"; };
+		C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFPropertyViewerView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +131,8 @@
 				C94AA43D1CE1CC9E00DF3C06 /* FFPropertyInspector.m */,
 				C94AA43F1CE1CF1E00DF3C06 /* FFPropertyInspectView.h */,
 				C94AA4401CE1CF1E00DF3C06 /* FFPropertyInspectView.m */,
+				C9CEF6A01E6FE1DC00B092EF /* FFPropertyViewerView.h */,
+				C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */,
 				C94AA4811CE2D99200DF3C06 /* FFInstanceNode.h */,
 				C94AA4821CE2D99200DF3C06 /* FFInstanceNode.m */,
 			);
@@ -235,6 +240,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C94AA4411CE1CF1E00DF3C06 /* FFPropertyInspectView.m in Sources */,
+				C9CEF6A21E6FE1DC00B092EF /* FFPropertyViewerView.m in Sources */,
 				C94AA43E1CE1CC9E00DF3C06 /* FFPropertyInspector.m in Sources */,
 				C94AA4831CE2D99200DF3C06 /* FFInstanceNode.m in Sources */,
 				C94AA41B1CE1CBED00DF3C06 /* ViewController.m in Sources */,

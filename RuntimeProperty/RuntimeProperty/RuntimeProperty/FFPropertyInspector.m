@@ -58,10 +58,41 @@ static NSString *extractStructName(NSString *typeEncodeString)
         }
         
         if (cls) {
-            [self parsePropertiesForClass:cls withInstanceNode:instanceNode];
+            
+            if ([instanceNode.instanceType isEqualToString:@"NSArray"]
+                || [instanceNode.instanceType isEqualToString:@"NSMutableArray"]) {
+                [self parseArrayWithNode:instanceNode];
+            }else{
+                [self parsePropertiesForClass:cls withInstanceNode:instanceNode];
+            }
         }
     }
     
+}
+
+
++(void)parseArrayWithNode:(FFInstanceNode*)node
+{
+    NSArray *array = node.rawValue;
+    NSMutableArray *childNodes = [NSMutableArray array];
+
+    for (int i=0;i<array.count;++i) {
+        id obj = array[i];
+        FFElementNode *inode = [[FFElementNode alloc] init];
+        inode.rawValue = obj;
+        inode.rawValueValid = YES;
+        inode.instanceName = [NSString stringWithFormat:@"%d",i];
+        inode.instanceType = NSStringFromClass([obj class]);
+        if ([obj isKindOfClass:[NSNumber class]]) {
+            inode.instanceType = NSStringFromClass([NSNumber class]);
+        }
+        inode.isObject = YES;
+        inode.parentNode = node;
+        inode.depth = node.depth+1;
+        [childNodes addObject:inode];
+    }
+    
+    node.elements = childNodes;
 }
 
 //http://stackoverflow.com/questions/29641396/how-to-get-and-set-a-property-value-with-runtime-in-objective-c
@@ -72,6 +103,7 @@ static NSString *extractStructName(NSString *typeEncodeString)
         || cls==[NSObject class]
         || cls==[NSString class]
         || cls==[NSNumber class]
+        || [cls isSubclassOfClass:[NSNumber class]]
         || cls==NSClassFromString(@"UIResponder")
         ) {
         return;
@@ -510,6 +542,22 @@ break; \
         return [self alterProperty:(FFPropertyNode*)instance toValue:value];
     }else if([instance isKindOfClass:[FFIVarNode class]]){
         return [self alterIvar:(FFIVarNode*)instance toValue:value];
+    }else if([instance isKindOfClass:[FFElementNode class]]){
+        return [self alterElement:(FFElementNode*)instance toValue:value];
+    }
+    return NO;
+}
+
+
++(BOOL)alterElement:(FFElementNode*)elementNode toValue:(id)newValue
+{
+    FFInstanceNode *parentNode = elementNode.parentNode;
+    if ([parentNode.rawValue isKindOfClass:[NSMutableArray class]]) {
+        NSMutableArray *array = parentNode.rawValue;
+        [array replaceObjectAtIndex:[elementNode.instanceName intValue] withObject:newValue];
+        elementNode.rawValue = newValue;
+        elementNode.instanceType = NSStringFromClass([newValue class]);
+        return YES;
     }
     return NO;
 }

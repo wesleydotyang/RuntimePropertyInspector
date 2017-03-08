@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-@class FFPropertyNode,FFIVarNode;
+@class FFPropertyNode,FFIVarNode,FFElementNode;
 
 
 @interface FFInstanceNode : NSObject
@@ -53,6 +53,10 @@
  */
 @property (nonatomic,strong) NSArray<FFIVarNode*> *ivars;
 /**
+ *  elements of this object
+ */
+@property (nonatomic,strong) NSArray<FFElementNode*> *elements;
+/**
  *  user defined infos
  */
 @property (nonatomic) NSMutableDictionary *userInfo;
@@ -94,6 +98,13 @@
  *  represent a ivar node
  */
 @interface FFIVarNode : FFInstanceNode
+
+@end
+
+/**
+ *  represent an element of `Set/Array/Dic`
+ */
+@interface FFElementNode : FFInstanceNode
 
 @end
 

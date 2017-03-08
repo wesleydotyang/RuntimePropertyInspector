@@ -8,20 +8,30 @@
 
 #import "FFPropertyInspectView.h"
 #import "FFPropertyInspector.h"
+#import "FFPropertyViewerView.h"
 
 #define INDENT_DISTANCE_PER_LEVEL  20
 
-typedef void(^InputValueCallback)(id value);
+typedef void(^FFInputValueCallback)(id value);
+@class FFPropertyCell;
 
+@protocol FFPopertyCellDelegate <NSObject>
+
+-(void)propertyCellDidTapDetailButton:(FFPropertyCell*)cell;
+
+@end
 
 @interface FFPropertyCell : UITableViewCell
 @property (nonatomic) UILabel *nameLabel;
 @property (nonatomic) UILabel *detailLabel;
+@property (nonatomic) UIButton *infoButton;
 @property (nonatomic) FFInstanceNode *nodeData;
+
+@property (nonatomic,weak) id<FFPopertyCellDelegate> delegate;
 +(CGFloat)heightForNode:(FFInstanceNode*)node totalWid:(CGFloat)totalWid;
 @end
 
-@interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource,UIAlertViewDelegate>
+@interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource,UIAlertViewDelegate,FFPopertyCellDelegate>
 
 @property (nonatomic) UITableView *tableView;
 
@@ -29,7 +39,7 @@ typedef void(^InputValueCallback)(id value);
 
 @property (nonatomic,strong) NSArray<FFInstanceNode*> *tableDisplayNodes;
 
-@property (nonatomic,copy) InputValueCallback inputValueCallback;
+@property (nonatomic,copy) FFInputValueCallback inputValueCallback;
 @end
 
 @implementation FFPropertyInspectView
@@ -96,6 +106,9 @@ typedef void(^InputValueCallback)(id value);
         for (FFInstanceNode *ivarNode in node.ivars) {
             [self appendTableData:tableData forNode:ivarNode];
         }
+        for (FFElementNode *eleNode in node.elements) {
+            [self appendTableData:tableData forNode:eleNode];
+        }
     }
     
 }
@@ -135,13 +148,13 @@ typedef void(^InputValueCallback)(id value);
 
     cell.separatorInset = UIEdgeInsetsMake(0, INDENT_DISTANCE_PER_LEVEL*node.depth, 0, 0);
     cell.nodeData = node;
-    
+    cell.delegate = self;
     return cell;
 }
 
 -(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSArray *eidtableTypes = @[@"BOOL",@"int",@"float",@"double",@"long",@"long long",@"unsigned long",@"unsigned long long",@"NSString",@"CGRect",@"CGSize",@"CGPoint"];
+    NSArray *eidtableTypes = @[@"BOOL",@"int",@"float",@"double",@"long",@"long long",@"unsigned long",@"unsigned long long",@"NSString",@"CGRect",@"CGSize",@"CGPoint",@"NSNumber"];
     FFInstanceNode *node = self.tableDisplayNodes[indexPath.row];
     if ([self isNodeExpanded:node] == NO) {
         if ([eidtableTypes containsObject:node.instanceType]) {
@@ -158,6 +171,14 @@ typedef void(^InputValueCallback)(id value);
     }
 }
 
+-(void)propertyCellDidTapDetailButton:(FFPropertyCell *)cell
+{
+    //view property detail
+    FFPropertyViewerView *viewer = [[FFPropertyViewerView alloc] initWithFrame:self.bounds];
+    viewer.targetObject = cell.nodeData.rawValue;
+    [self addSubview:viewer];
+}
+
 -(void)modifyNode:(FFInstanceNode*)node
 {
 
@@ -169,6 +190,7 @@ typedef void(^InputValueCallback)(id value);
          || [node.instanceType isEqualToString:@"long long"]
          || [node.instanceType isEqualToString:@"unsigned long"]
          || [node.instanceType isEqualToString:@"unsigned long long" ]
+         || [node.instanceType isEqualToString:@"NSNumber"]
          ) {
         __weak FFPropertyInspectView *weakSelf = self;
         [self setInputValueCallback:^(id value){
@@ -180,8 +202,11 @@ typedef void(^InputValueCallback)(id value);
                 numValue = [f numberFromString:strValue];
             }
             if (numValue) {
-                [FFPropertyInspector alterInstance:node toValue:numValue];
-                [weakSelf reloadTableData];
+                if([FFPropertyInspector alterInstance:node toValue:numValue]){
+                    [weakSelf reloadTableData];
+                }else{
+                    [FFPropertyInspectView alertMsg:@"modify value failed"];
+                }
             }else{
                 [FFPropertyInspectView alertMsg:@"not a valid input"];
             }
@@ -280,8 +305,19 @@ typedef void(^InputValueCallback)(id value);
         self.detailLabel.font = [UIFont systemFontOfSize:9];
         self.detailLabel.numberOfLines = 0;
         [self.contentView addSubview:self.detailLabel];
+        
+        self.infoButton = [UIButton buttonWithType:UIButtonTypeInfoLight];
+        [self.infoButton addTarget:self action:@selector(didTapInfoButton) forControlEvents:UIControlEventTouchUpInside];
+        [self.contentView addSubview:self.infoButton];
     }
     return self;
+}
+
+-(void)didTapInfoButton
+{
+    if (self.delegate) {
+        [self.delegate propertyCellDidTapDetailButton:self];
+    }
 }
 
 -(void)setNodeData:(FFInstanceNode *)nodeData
@@ -289,7 +325,7 @@ typedef void(^InputValueCallback)(id value);
     _nodeData = nodeData;
 
     self.nameLabel.text = [self.class titleDescriptionForNode:nodeData];
-    self.detailLabel.attributedText = [self.class detailDescriptionForNode:nodeData];
+    self.detailLabel.attributedText = [self.class detailDescriptionForNode:nodeData limitDetail:YES];
     
     [self setNeedsLayout];
 }
@@ -297,11 +333,11 @@ typedef void(^InputValueCallback)(id value);
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    self.nameLabel.frame = CGRectMake(10+INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, 0, self.frame.size.width-INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, 25);
-    float titleWid = [[self.class titleDescriptionForNode:self.nodeData] sizeWithAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:11]}].width;
-    float detailLeft = titleWid + self.nameLabel.frame.origin.x + 10;
+    self.nameLabel.frame = CGRectMake(10+INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, 0, self.frame.size.width-INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, self.frame.size.height);
+    self.infoButton.frame = CGRectMake(self.frame.size.width - 35, 0, 35, self.frame.size.height);
+    float titleWid = [self.nameLabel.text sizeWithAttributes:@{NSFontAttributeName:self.nameLabel.font}].width;
 
-    self.detailLabel.frame = CGRectMake(detailLeft,0, self.frame.size.width-detailLeft-10, self.frame.size.height);
+    self.detailLabel.frame = CGRectMake(CGRectGetMinX(self.nameLabel.frame)+titleWid+10,0, self.frame.size.width - CGRectGetMinX(self.nameLabel.frame)-titleWid - 10- CGRectGetWidth(self.infoButton.frame), self.frame.size.height);
     
 }
 
@@ -317,13 +353,18 @@ typedef void(^InputValueCallback)(id value);
     return node.instanceName;
 }
 
-+(NSAttributedString*)detailDescriptionForNode:(FFInstanceNode*)node
++(NSAttributedString*)detailDescriptionForNode:(FFInstanceNode*)node limitDetail:(BOOL)limitDetail
 {
     NSMutableAttributedString *attString = [[NSMutableAttributedString alloc] init];
     NSAttributedString *typeAtt = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"(%@)",node.instanceType] attributes:@{NSForegroundColorAttributeName:[UIColor lightGrayColor]}];
     NSString *valueStr;
     if (node.rawValueValid && !node.inheritClassNode) {
         valueStr = [NSString stringWithFormat:@"%@",node.rawValue];
+        if (limitDetail) {
+            if (valueStr.length > 40) {
+                valueStr = [[valueStr substringToIndex:40] stringByAppendingString:@"..."];
+            }
+        }
     }else{
         valueStr = @"_";
     }
@@ -337,11 +378,11 @@ typedef void(^InputValueCallback)(id value);
 +(CGFloat)heightForNode:(FFInstanceNode*)node totalWid:(CGFloat)totalWid
 {
     NSString *title = [self titleDescriptionForNode:node];
-    NSString *detail = [self detailDescriptionForNode:node].string;
+    NSString *detail = [self detailDescriptionForNode:node limitDetail:YES].string;
     float titleWid = [title sizeWithAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:11]}].width;
-    float detailWid = totalWid - titleWid - 30 - INDENT_DISTANCE_PER_LEVEL*node.depth;
+    float detailWid = totalWid - titleWid - 65 - INDENT_DISTANCE_PER_LEVEL*node.depth;
     float detailHeight = [detail boundingRectWithSize:CGSizeMake(detailWid, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin attributes:@{NSFontAttributeName:[UIFont systemFontOfSize:9]} context:nil].size.height;
-    return MAX(25, detailHeight + 15);
+    return MAX(33, detailHeight + 15);
 }
 
 @end

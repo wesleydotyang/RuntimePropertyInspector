@@ -53,3 +53,7 @@
 @implementation FFIVarNode
 
 @end
+
+@implementation FFElementNode
+
+@end
