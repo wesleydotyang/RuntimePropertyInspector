@@ -59,9 +59,10 @@ static NSString *extractStructName(NSString *typeEncodeString)
         
         if (cls) {
             
-            if ([instanceNode.instanceType isEqualToString:@"NSArray"]
-                || [instanceNode.instanceType isEqualToString:@"NSMutableArray"]) {
+            if ([instanceNode.rawValue isKindOfClass:[NSArray class]]) {
                 [self parseArrayWithNode:instanceNode];
+            }else if([instanceNode.rawValue isKindOfClass:[NSDictionary class]]){
+                [self parseDictionaryWithNode:instanceNode];
             }else{
                 [self parsePropertiesForClass:cls withInstanceNode:instanceNode];
             }
@@ -70,6 +71,33 @@ static NSString *extractStructName(NSString *typeEncodeString)
     
 }
 
+
++(void)parseDictionaryWithNode:(FFInstanceNode*)node
+{
+    NSDictionary *dic = node.rawValue;
+    NSMutableArray *childNodes = [NSMutableArray array];
+    
+    [dic enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull key, id  _Nonnull obj, BOOL * _Nonnull stop) {
+        FFElementNode *inode = [[FFElementNode alloc] init];
+        inode.rawValue = obj;
+        inode.rawValueValid = YES;
+        inode.instanceName = key;
+        if ([obj isKindOfClass:[NSNumber class]]) {
+            inode.instanceType = NSStringFromClass([NSNumber class]);
+        }else if([obj isKindOfClass:[NSString class]]){
+            inode.instanceType = NSStringFromClass([NSString class]);
+        }else{
+            inode.instanceType = NSStringFromClass([obj class]);
+        }
+        inode.isObject = YES;
+        inode.parentNode = node;
+        inode.depth = node.depth+1;
+        [childNodes addObject:inode];
+    }];
+
+    
+    node.elements = childNodes;
+}
 
 +(void)parseArrayWithNode:(FFInstanceNode*)node
 {
@@ -82,9 +110,12 @@ static NSString *extractStructName(NSString *typeEncodeString)
         inode.rawValue = obj;
         inode.rawValueValid = YES;
         inode.instanceName = [NSString stringWithFormat:@"%d",i];
-        inode.instanceType = NSStringFromClass([obj class]);
         if ([obj isKindOfClass:[NSNumber class]]) {
             inode.instanceType = NSStringFromClass([NSNumber class]);
+        }else if([obj isKindOfClass:[NSString class]]){
+            inode.instanceType = NSStringFromClass([NSString class]);
+        }else{
+            inode.instanceType = NSStringFromClass([obj class]);
         }
         inode.isObject = YES;
         inode.parentNode = node;
@@ -94,6 +125,7 @@ static NSString *extractStructName(NSString *typeEncodeString)
     
     node.elements = childNodes;
 }
+
 
 //http://stackoverflow.com/questions/29641396/how-to-get-and-set-a-property-value-with-runtime-in-objective-c
 +(void)parsePropertiesForClass:(Class)cls withInstanceNode:(FFInstanceNode*)node
@@ -557,6 +589,11 @@ break; \
         [array replaceObjectAtIndex:[elementNode.instanceName intValue] withObject:newValue];
         elementNode.rawValue = newValue;
         elementNode.instanceType = NSStringFromClass([newValue class]);
+        return YES;
+    }else if([parentNode.rawValue isKindOfClass:[NSMutableDictionary class]]){
+        NSMutableDictionary *dic = parentNode.rawValue;
+        dic[elementNode.instanceName] = newValue;
+        elementNode.rawValue = newValue;
         return YES;
     }
     return NO;

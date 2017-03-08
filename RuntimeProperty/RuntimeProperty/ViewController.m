@@ -63,7 +63,7 @@
     testObj.rect = CGRectMake(0, 1, 2, 3);
     testObj.testArray = [NSMutableArray arrayWithArray:@[@4,@1,@2]];
     // Do any additional setup after loading the view, typically from a nib.
-    testObj.testDic = @{@"key1":@"value1",@"key2":@2,@"key3":@"3",@"key4":@"k4"};
+    testObj.testDic = [NSMutableDictionary dictionaryWithDictionary: @{@"key1":@YES,@"key2":@2,@"key3":@"3",@"key4":@"k4"}];
 //    testObj->inspectView = self.inspectView;
 //    testObj->testInt = 5;
     testObj.vm = [[JSContext alloc] init];
