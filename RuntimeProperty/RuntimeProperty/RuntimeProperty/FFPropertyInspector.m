@@ -65,6 +65,7 @@ static NSString *extractStructName(NSString *typeEncodeString)
                 [self parseDictionaryWithNode:instanceNode];
             }else{
                 [self parsePropertiesForClass:cls withInstanceNode:instanceNode];
+                [self parseMethodsForClass:cls withNode:instanceNode];
             }
         }
     }
@@ -126,6 +127,44 @@ static NSString *extractStructName(NSString *typeEncodeString)
     node.elements = childNodes;
 }
 
+
+
++(void)parseMethodsForClass:(Class)cls withNode:(FFInstanceNode*)node
+{
+    unsigned int methodCount = 0;
+    Method *methods = class_copyMethodList(cls, &methodCount);
+    
+    NSMutableArray *instanceMethods = [NSMutableArray arrayWithCapacity:methodCount];
+    
+    for (unsigned int i = 0; i < methodCount; i++) {
+        Method method = methods[i];
+        FFMethodNode *methodNode = [FFMethodNode new];
+        methodNode.methodName = NSStringFromSelector(method_getName(method));
+        methodNode.depth = node.depth+1;
+        [instanceMethods addObject:methodNode];
+    }
+    
+    free(methods);
+    
+    Method *cMethods = class_copyMethodList(object_getClass(cls), &methodCount);
+    
+    NSMutableArray *classMethods = [NSMutableArray arrayWithCapacity:methodCount];
+    
+    for (unsigned int i = 0; i < methodCount; i++) {
+        Method method = cMethods[i];
+        FFMethodNode *methodNode = [FFMethodNode new];
+        methodNode.methodName = NSStringFromSelector(method_getName(method));
+        methodNode.isClassMethod = YES;
+        methodNode.depth = node.depth+1;
+        [classMethods addObject:methodNode];
+    }
+    
+    free(cMethods);
+    
+    
+    node.instanceMethods = instanceMethods;
+    node.classMethods = classMethods;
+}
 
 //http://stackoverflow.com/questions/29641396/how-to-get-and-set-a-property-value-with-runtime-in-objective-c
 +(void)parsePropertiesForClass:(Class)cls withInstanceNode:(FFInstanceNode*)node

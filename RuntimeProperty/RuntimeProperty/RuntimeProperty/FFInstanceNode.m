@@ -8,6 +8,7 @@
 
 #import "FFInstanceNode.h"
 
+
 @implementation FFInstanceNode
 
 -(NSMutableDictionary *)userInfo
@@ -55,5 +56,9 @@
 @end
 
 @implementation FFElementNode
+
+@end
+
+@implementation FFMethodNode
 
 @end

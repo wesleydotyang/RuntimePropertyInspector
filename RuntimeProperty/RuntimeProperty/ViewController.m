@@ -63,7 +63,7 @@
     testObj.rect = CGRectMake(0, 1, 2, 3);
     testObj.testArray = [NSMutableArray arrayWithArray:@[@4,@1,@2]];
     // Do any additional setup after loading the view, typically from a nib.
-    testObj.testDic = [NSMutableDictionary dictionaryWithDictionary: @{@"key1":@YES,@"key2":@2,@"key3":@"3",@"key4":@"k4"}];
+    testObj.testDic = [NSMutableDictionary dictionaryWithDictionary: @{@"key1":@YES,@"key2":@2,@"key3":@"3",@"key4":testObj}];
 //    testObj->inspectView = self.inspectView;
 //    testObj->testInt = 5;
     testObj.vm = [[JSContext alloc] init];
@@ -78,8 +78,30 @@
         NSLog(@"");
     }];
     
+    Class cls = self.class;
+    unsigned int methodCount = 0;
+    Method *methods = class_copyMethodList(object_getClass(cls), &methodCount);
+    printf("Found %d methods on '%s'\n", methodCount, class_getName(cls));
+    
+    for (unsigned int i = 0; i < methodCount; i++) {
+        Method method = methods[i];
+        
+        printf("\t'%s' has method named '%s' of encoding '%s'\n",
+               class_getName(cls),
+               sel_getName(method_getName(method)),
+               method_getTypeEncoding(method));
+        
+        /**
+         *  Or do whatever you need here...
+         */
+    }
+    
+    free(methods);
 }
 
-
++(void)testFunc:(NSArray*)a va:(NSString*)b
+{
+    
+}
 
 @end

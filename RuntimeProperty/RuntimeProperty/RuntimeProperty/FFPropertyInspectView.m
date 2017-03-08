@@ -109,6 +109,12 @@ typedef void(^FFInputValueCallback)(id value);
         for (FFElementNode *eleNode in node.elements) {
             [self appendTableData:tableData forNode:eleNode];
         }
+        for (FFMethodNode * mNode in node.classMethods) {
+            [self appendTableData:tableData forNode:mNode];
+        }
+        for (FFMethodNode * mNode in node.instanceMethods) {
+            [self appendTableData:tableData forNode:mNode];
+        }
     }
     
 }
@@ -343,8 +349,17 @@ typedef void(^FFInputValueCallback)(id value);
 
 +(NSString*)titleDescriptionForNode:(FFInstanceNode*)node
 {
+    if ([node isKindOfClass:[FFMethodNode class]]) {
+        FFMethodNode *mNode = (FFMethodNode*)node;
+        if (mNode.isClassMethod) {
+            return [NSString stringWithFormat:@"+%@",mNode.methodName];
+        }else{
+            return [NSString stringWithFormat:@"-%@",mNode.methodName];
+        }
+    }
+    
     if ([node isKindOfClass:[FFPropertyNode class]]) {
-        return [@"- " stringByAppendingString:node.instanceName];
+        return [@"@ " stringByAppendingString:node.instanceName];
     }else if([node isKindOfClass:[FFIVarNode class]]){
         return [@"> " stringByAppendingString:node.instanceName];
     }else if(node.inheritClassNode){
@@ -355,6 +370,10 @@ typedef void(^FFInputValueCallback)(id value);
 
 +(NSAttributedString*)detailDescriptionForNode:(FFInstanceNode*)node limitDetail:(BOOL)limitDetail
 {
+    if ([node isKindOfClass:[FFMethodNode class]]) {
+        return nil;
+    }
+    
     NSMutableAttributedString *attString = [[NSMutableAttributedString alloc] init];
     NSAttributedString *typeAtt = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"(%@)",node.instanceType] attributes:@{NSForegroundColorAttributeName:[UIColor lightGrayColor]}];
     NSString *valueStr;

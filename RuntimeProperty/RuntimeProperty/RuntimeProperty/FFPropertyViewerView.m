@@ -17,7 +17,7 @@
 -(instancetype)initWithFrame:(CGRect)frame
 {
     if (self = [super initWithFrame:frame]) {
-        
+        self.backgroundColor = [UIColor darkGrayColor];
         self.contentView = [[UIView alloc] initWithFrame:CGRectMake(0, 30, frame.size.width, frame.size.height - 30)];
         self.contentView.clipsToBounds = YES;
         [self addSubview:self.contentView];

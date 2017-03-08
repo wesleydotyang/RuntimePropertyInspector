@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-@class FFPropertyNode,FFIVarNode,FFElementNode;
+@class FFPropertyNode,FFIVarNode,FFElementNode,FFMethodNode;
 
 
 @interface FFInstanceNode : NSObject
@@ -56,6 +56,14 @@
  *  elements of this object
  */
 @property (nonatomic,strong) NSArray<FFElementNode*> *elements;
+/**
+ *  instance methods of this object
+ */
+@property (nonatomic,strong) NSArray<FFMethodNode*> *instanceMethods;
+/**
+ *  class methods of this object
+ */
+@property (nonatomic,strong) NSArray<FFMethodNode*> *classMethods;
 /**
  *  user defined infos
  */
@@ -109,3 +117,12 @@
 @end
 
 
+@interface FFMethodNode : FFInstanceNode
+
+@property (nonatomic) NSString *methodName;
+@property (nonatomic) BOOL isClassMethod;
+/**
+ *  depth in parsing
+ */
+@property (nonatomic) int depth;
+@end
