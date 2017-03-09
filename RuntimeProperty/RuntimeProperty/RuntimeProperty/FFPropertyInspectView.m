@@ -5,9 +5,11 @@
 //  Created by Wesley Yang on 16/5/10.
 //  Copyright © 2016年 ff. All rights reserved.
 //
+#import "FFPropertyInspector.h"
+
+#ifdef FFPropertyInspectorOn
 
 #import "FFPropertyInspectView.h"
-#import "FFPropertyInspector.h"
 #import "FFPropertyViewerView.h"
 
 #define INDENT_DISTANCE_PER_LEVEL  20
@@ -129,7 +131,7 @@ typedef void(^FFInputValueCallback)(id value);
 -(UITableView *)tableView
 {
     if (!_tableView) {
-        _tableView = [[UITableView alloc] initWithFrame:self.bounds style:UITableViewStyleGrouped];
+        _tableView = [[UITableView alloc] initWithFrame:self.bounds style:UITableViewStylePlain];
         _tableView.dataSource = self;
         _tableView.delegate = self;
         [_tableView registerClass:[FFPropertyCell class] forCellReuseIdentifier:@"cell"];
@@ -405,3 +407,5 @@ typedef void(^FFInputValueCallback)(id value);
 }
 
 @end
+
+#endif

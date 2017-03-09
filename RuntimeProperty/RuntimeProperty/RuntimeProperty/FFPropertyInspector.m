@@ -5,11 +5,146 @@
 //  Created by Wesley Yang on 16/5/10.
 //  Copyright © 2016年 ff. All rights reserved.
 //
-
 #import "FFPropertyInspector.h"
-@import UIKit;
+
+#ifdef FFPropertyInspectorOn
+
+#import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
+#import <mach/mach.h>
+#import <malloc/malloc.h>
+
+
+struct FFObjectStruct {
+    Class isa_;
+}FFObjectStruct;
+
+
+static kern_return_t FFReadMemory(task_t task, vm_address_t address, vm_size_t size, void **data) {
+    *data = (void*)address;
+    return KERN_SUCCESS;
+}
+
+static Class* FFGetAllClassList(size_t *size)
+{
+    static Class * classes = NULL;
+    static size_t classes_size = 0;
+    
+    if (classes != NULL) {
+        *size = classes_size;
+        return classes;
+    }
+    
+    int numClasses = objc_getClassList(NULL, 0);
+    *size = numClasses;
+
+    if (numClasses > 0 )
+    {
+        classes = (Class*)malloc(sizeof(Class) * numClasses);
+        numClasses = objc_getClassList(classes, numClasses);
+    }
+    return classes;
+}
+
+
+static Class* FFGetClassesMatchString(NSString *query,size_t *result_size)
+{
+    size_t size;
+    Class *allClasses = FFGetAllClassList(&size);
+    size_t maxClasses = 1000;
+    Class *results = (Class*)malloc(sizeof(Class)*maxClasses);
+    int count = 0;
+    for (int i=0; i<size && count<maxClasses; ++i) {
+        Class cls = allClasses[i];
+        NSString *clsName = NSStringFromClass(cls);
+        if ([clsName rangeOfString:query].location != NSNotFound) {
+            results[count] = cls;
+            count++;
+        }
+    }
+    *result_size = count;
+    return results;
+}
+
+static NSDictionary<NSValue*,NSString*> *ff_filter_classes_table;//store filter classes
+static NSMutableArray<NSValue*> *ff_result_instances;//store result(weak obj)
+
+static void FFChooseClass();
+
+static NSArray<NSObject*>* FFGetInstancesOfClassesMatchString(NSString* query){
+    size_t count;
+    Class *filter_classes = FFGetClassesMatchString(query,&count);
+    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
+
+    for (int i=0;i<count;++i) {
+        Class cls = filter_classes[i];
+        [dic setObject:NSStringFromClass(cls) forKey:[NSValue valueWithPointer:(__bridge const void * _Nullable)(cls)]];
+    }
+    ff_filter_classes_table = dic;
+    free(filter_classes);
+    
+    ff_result_instances = [NSMutableArray array];
+    FFChooseClass();
+    
+    return ff_result_instances;
+}
+
+static void FFRangesCallback(task_t task, void *baton, unsigned type,
+                             vm_range_t *ranges, unsigned count) {
+    
+    for(int i=0;i<count;++i){
+        vm_range_t range = ranges[i];
+        void *data = (void *)range.address;
+        size_t size = range.size;
+        if (size < sizeof(FFObjectStruct))
+            continue;
+        
+        uintptr_t *pointers = (uintptr_t *)range.address;
+        void *ptr = (void*)(pointers[0] & 0x1fffffff8);
+        Class isa = (__bridge Class)ptr;
+        
+        id searchResult = ff_filter_classes_table[[NSValue valueWithPointer:(__bridge const void * _Nullable)(isa)]];
+        if (!searchResult) {
+            continue;
+        }
+        
+        size_t needed = class_getInstanceSize(isa);
+        size_t boundary = 496;
+#ifdef __LP64__
+        boundary *= 2;
+#endif
+        if ((needed <= boundary && (needed + 15) / 16 * 16 != size) || (needed > boundary && (needed + 511) / 512 * 512 != size))
+            continue;
+        
+        [ff_result_instances addObject:[NSValue valueWithNonretainedObject:(__bridge id _Nullable)(data)]];
+    }
+}
+
+static void FFChooseClass()
+{
+    vm_address_t *zones;
+    unsigned size;
+    kern_return_t ret = malloc_get_all_zones(0,&FFReadMemory,&zones,&size);
+    if (ret != KERN_SUCCESS) {
+        return;
+    }
+    
+    NSLog(@"total zone count:%u",size);
+    int maxResultCount = 1000;
+    
+    for (int i=0; i<size; ++i) {
+        NSLog(@"%d",i);
+        const malloc_zone_t *zone = (malloc_zone_t*)zones[i];
+        if (zone == NULL || zone->introspect == NULL)
+            continue;
+        zone->introspect->enumerator(mach_task_self(),NULL,MALLOC_PTR_IN_USE_RANGE_TYPE,zones[i],&FFReadMemory,FFRangesCallback);
+        if (ff_result_instances.count > maxResultCount) {
+            break;
+        }
+    }
+}
+
 
 static NSString *extractStructName(NSString *typeEncodeString)
 {
@@ -29,7 +164,10 @@ static NSString *extractStructName(NSString *typeEncodeString)
 
 @implementation FFPropertyInspector
 
-
++(NSArray<NSValue*>*)searchForInstancesOfClassMatch:(NSString *)match
+{
+    return FFGetInstancesOfClassesMatchString(match);
+}
 
 +(FFInstanceNode*)nodeDataForInstance:(NSObject*)instance;
 {
@@ -41,7 +179,7 @@ static NSString *extractStructName(NSString *typeEncodeString)
     rootNode.isObject = YES;
     rootNode.depth = 0;
     
-    [self parsePropertiesForClass:instance.class withInstanceNode:rootNode];
+//    [self parsePropertiesForClass:instance.class withInstanceNode:rootNode];
     
     // Return immutable.
     return rootNode;
@@ -66,6 +204,8 @@ static NSString *extractStructName(NSString *typeEncodeString)
             }else{
                 [self parsePropertiesForClass:cls withInstanceNode:instanceNode];
                 [self parseMethodsForClass:cls withNode:instanceNode];
+                [self mergePropertyMethodForNode:instanceNode];
+
             }
         }
     }
@@ -141,6 +281,9 @@ static NSString *extractStructName(NSString *typeEncodeString)
         FFMethodNode *methodNode = [FFMethodNode new];
         methodNode.methodName = NSStringFromSelector(method_getName(method));
         methodNode.depth = node.depth+1;
+        if ([methodNode.methodName hasPrefix:@"."]) {//hidden methods
+            continue;
+        }
         [instanceMethods addObject:methodNode];
     }
     
@@ -344,7 +487,26 @@ static NSString *extractStructName(NSString *typeEncodeString)
         }
     }
     node.ivars = ivarsFiltered;
-    
+}
+
++(void)mergePropertyMethodForNode:(FFInstanceNode*)node
+{
+    NSMutableArray *methodsFiltered = [NSMutableArray arrayWithArray:node.instanceMethods];
+    for (FFMethodNode *methodNode in node.instanceMethods) {
+        for (FFInstanceNode *propertyNode in node.properties) {
+            NSString *propertyName = propertyNode.instanceName;
+            NSString *firstLetter = [propertyName substringToIndex:1];
+            NSString *otherLetter = [propertyName substringFromIndex:1];
+            NSString *setterName = [NSString stringWithFormat:@"set%@%@:",firstLetter.capitalizedString,otherLetter];
+            
+            if ([propertyName isEqualToString:methodNode.methodName]
+                || [setterName isEqualToString:methodNode.methodName]) {
+                [methodsFiltered removeObject:methodNode];
+                break;
+            }
+        }
+    }
+    node.instanceMethods = methodsFiltered;
 }
 
 +(id)valueForObj:(id)obj forPropertyNamedKey:(NSString*)propertyName isReturnValid:(BOOL*)isReturnValid
@@ -757,3 +919,4 @@ if ([propertyNode.instanceType isEqualToString:@#type]) {\
 @end
 
 
+#endif

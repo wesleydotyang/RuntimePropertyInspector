@@ -6,6 +6,10 @@
 //  Copyright © 2016年 ff. All rights reserved.
 //
 
+#import "FFPropertyInspector.h"
+
+#ifdef FFPropertyInspectorOn
+
 #import <UIKit/UIKit.h>
 
 
@@ -15,3 +19,5 @@
 @end
 
 
+
+#endif

@@ -13,6 +13,10 @@
 #import <objc/runtime.h>
 #import <WebKit/WebKit.h>
 #import <JavaScriptCore/JavaScriptCore.h>
+#include <objc/message.h>
+
+
+
 
 @interface TestObject : NSObject
 {
@@ -23,6 +27,7 @@
     CGPoint _testPoint;
     long long longValue;
 }
+
 //@property (weak, nonatomic)  FFPropertyInspectView *inspectView;
 @property (nonatomic) UIImage *image;
 @property (nonatomic) CGRect rect;
@@ -39,8 +44,6 @@
 
 
 @end
-
-
 
 @interface ViewController (){
 }
@@ -78,25 +81,10 @@
         NSLog(@"");
     }];
     
-    Class cls = self.class;
-    unsigned int methodCount = 0;
-    Method *methods = class_copyMethodList(object_getClass(cls), &methodCount);
-    printf("Found %d methods on '%s'\n", methodCount, class_getName(cls));
+
+    NSArray *res = [FFPropertyInspector searchForInstancesOfClassMatch:@"iewController"];
     
-    for (unsigned int i = 0; i < methodCount; i++) {
-        Method method = methods[i];
-        
-        printf("\t'%s' has method named '%s' of encoding '%s'\n",
-               class_getName(cls),
-               sel_getName(method_getName(method)),
-               method_getTypeEncoding(method));
-        
-        /**
-         *  Or do whatever you need here...
-         */
-    }
     
-    free(methods);
 }
 
 +(void)testFunc:(NSArray*)a va:(NSString*)b

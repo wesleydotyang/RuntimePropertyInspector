@@ -6,6 +6,12 @@
 //  Copyright © 2016年 ff. All rights reserved.
 //
 
+//main code switch
+#define FFPropertyInspectorOn
+
+
+#ifdef FFPropertyInspectorOn
+
 #import <Foundation/Foundation.h>
 #import "FFInstanceNode.h"
 
@@ -23,4 +29,8 @@
 +(BOOL)alterIvar:(FFIVarNode*)ivar toValue:(id)value;
 
 
++(NSArray<NSValue*>*)searchForInstancesOfClassMatch:(NSString *)match;
+
 @end
+
+#endif

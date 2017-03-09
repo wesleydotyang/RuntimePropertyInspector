@@ -7,6 +7,11 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "FFPropertyInspector.h"
+
+#ifdef FFPropertyInspectorOn
+
+
 @class FFPropertyNode,FFIVarNode,FFElementNode,FFMethodNode;
 
 
@@ -121,8 +126,7 @@
 
 @property (nonatomic) NSString *methodName;
 @property (nonatomic) BOOL isClassMethod;
-/**
- *  depth in parsing
- */
-@property (nonatomic) int depth;
 @end
+
+
+#endif

@@ -6,11 +6,18 @@
 //  Copyright © 2017年 ff. All rights reserved.
 //
 
-#import <UIKit/UIKit.h>
+#import "FFPropertyInspector.h"
+
+#ifdef FFPropertyInspectorOn
+
 #import "FFInstanceNode.h"
+#import <UIKit/UIKit.h>
 
 @interface FFPropertyViewerView : UIView
 
 @property (nonatomic) id targetObject;
 
 @end
+
+
+#endif

@@ -5,6 +5,8 @@
 //  Created by Wesley Yang on 16/5/11.
 //  Copyright © 2016年 ff. All rights reserved.
 //
+#import "FFPropertyInspector.h"
+#ifdef FFPropertyInspectorOn
 
 #import "FFInstanceNode.h"
 
@@ -62,3 +64,5 @@
 @implementation FFMethodNode
 
 @end
+
+#endif
