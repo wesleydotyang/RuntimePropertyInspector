@@ -33,6 +33,9 @@ typedef void(^FFInputValueCallback)(id value);
 +(CGFloat)heightForNode:(FFInstanceNode*)node totalWid:(CGFloat)totalWid;
 @end
 
+@interface FFTableView : UITableView
+@end
+
 @interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource,UIAlertViewDelegate,FFPopertyCellDelegate,UISearchResultsUpdating>
 
 @property (nonatomic) UITableView *tableView;
@@ -182,7 +185,7 @@ typedef void(^FFInputValueCallback)(id value);
 -(UITableView *)tableView
 {
     if (!_tableView) {
-        _tableView = [[UITableView alloc] initWithFrame:self.bounds style:UITableViewStylePlain];
+        _tableView = [[FFTableView alloc] initWithFrame:self.bounds style:UITableViewStylePlain];
         _tableView.dataSource = self;
         _tableView.delegate = self;
         [_tableView registerClass:[FFPropertyCell class] forCellReuseIdentifier:@"cell"];
@@ -489,6 +492,12 @@ typedef void(^FFInputValueCallback)(id value);
     float detailHeight = [detail boundingRectWithSize:CGSizeMake(detailWid, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin attributes:@{NSFontAttributeName:[UIFont systemFontOfSize:9]} context:nil].size.height;
     return MAX(33, detailHeight + 15);
 }
+
+@end
+
+
+
+@implementation FFTableView
 
 @end
 
