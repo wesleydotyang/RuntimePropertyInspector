@@ -219,7 +219,7 @@ typedef void(^FFInputValueCallback)(id value);
         if ([eidtableTypes containsObject:node.instanceType]) {
             [self modifyNode:node];
         }else if([node isKindOfClass:[FFMethodNode class]]){
-            [self callMethodOnNode:node];
+            [self callMethodOnNode:(FFMethodNode*)node];
         
         }else{
             [FFPropertyInspector expandInstanceNode:node];
@@ -367,6 +367,7 @@ typedef void(^FFInputValueCallback)(id value);
         self.inputValueCallback(tf.text);
     }
 }
+
 
 @end
 

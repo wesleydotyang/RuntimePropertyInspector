@@ -68,7 +68,7 @@ static Class* FFGetClassesMatchString(NSString *query,size_t *result_size)
             if ([blackList containsObject:clsName]) {
                 continue;
             }
-            if ([clsName hasPrefix:@"_"] || [clsName hasPrefix:@"FF"] || [clsName hasPrefix:@"NSCF"] || [clsName hasPrefix:@"NSTag"]) {
+            if ([clsName hasPrefix:@"_"] || [clsName hasPrefix:@"FF"] || [clsName hasPrefix:@"NSCF"] || [clsName hasPrefix:@"NSTag"] || [clsName hasPrefix:@"CF"]) {
                 continue;
             }
             
@@ -81,34 +81,62 @@ static Class* FFGetClassesMatchString(NSString *query,size_t *result_size)
     return results;
 }
 
-static NSDictionary<NSString*,NSObject*> *ff_filter_classes_table;//store filter classes
-static NSMutableArray *ff_result_instances;//store result
 
-static void FFChooseClass();
 
-static NSArray<NSObject*>* FFGetInstancesOfClassesMatchString(NSString* query){
+typedef void (^ff_object_enumeration_block_t)(__unsafe_unretained id object, __unsafe_unretained Class actualClass,BOOL *stop);
+
+
+static CFMutableSetRef ff_filter_classes;//store filter classes
+
+static void FFChooseClass(ff_object_enumeration_block_t enumurator);
+
+static NSArray* FFGetInstancesOfClassesMatchString(NSString* query){
     CFTimeInterval startTime = CACurrentMediaTime();
+    NSString *lowercaseQuery = query.lowercaseString;
     size_t count;
     Class *filter_classes = FFGetClassesMatchString(query,&count);
-    NSMutableDictionary *dic = [NSMutableDictionary dictionary];
-
-    for (int i=0;i<count;++i) {
-        Class cls = filter_classes[i];
-        [dic setObject:@1 forKey:[NSString stringWithFormat:@"%p",cls]];
+    
+    if (!ff_filter_classes) {
+        ff_filter_classes = CFSetCreateMutable(NULL, 0, NULL);
+    }else{
+        CFSetRemoveAllValues(ff_filter_classes);
     }
     
-    ff_filter_classes_table = dic;
+    for (int i=0;i<count;++i) {
+        Class cls = filter_classes[i];
+        CFSetAddValue(ff_filter_classes, (__bridge const void *)cls);
+    }
+    
     free(filter_classes);
     
-    ff_result_instances = [NSMutableArray array];
-    FFChooseClass();
+    int maxResult = 1000;
+    __block int ff_result_instances_count = 0;
+    void** ff_result_instances = (void**)malloc(sizeof(void*) * maxResult);
+    
+    FFChooseClass(^(__unsafe_unretained id object, __unsafe_unretained Class actualClass, BOOL *stop) {
+        if (ff_result_instances_count>maxResult) {
+            *stop = YES;
+        }
+        if([NSStringFromClass(actualClass).lowercaseString rangeOfString:lowercaseQuery].location!=NSNotFound){
+            ff_result_instances[ff_result_instances_count++] = (__bridge void *)(object);
+        }
+    });
     
     NSLog(@"CostTime %dms",(int)((CACurrentMediaTime()-startTime)*1000));
-    return ff_result_instances;
+    
+    NSMutableArray *array = [NSMutableArray array];
+    for (int i=0;i<ff_result_instances_count;++i) {
+        void *obj = ff_result_instances[i];
+        [array addObject:(__bridge id _Nonnull)(obj)];
+    }
+    free(ff_result_instances);
+    return array;
 }
 
 static void FFRangesCallback(task_t task, void *baton, unsigned type,
                              vm_range_t *ranges, unsigned count) {
+    ff_object_enumeration_block_t callback = (__bridge ff_object_enumeration_block_t)(baton);
+    BOOL shouldStop = NO;
     
     for(int i=0;i<count;++i){
         vm_range_t range = ranges[i];
@@ -125,15 +153,11 @@ static void FFRangesCallback(task_t task, void *baton, unsigned type,
             continue;
         }
         
-        NSString *key = [NSString stringWithFormat:@"%p",isa];
-        id searchResult = ff_filter_classes_table[key];
-        if (!searchResult) {
+        if (!CFSetContainsValue(ff_filter_classes,(__bridge const void *)isa)) {
             continue;
         }
         
-        if ((__bridge id)data == ff_result_instances || (__bridge id)data == ff_filter_classes_table) {
-            continue;
-        }
+        
         size_t needed = class_getInstanceSize(isa);
         size_t boundary = 496;
 #ifdef __LP64__
@@ -149,16 +173,15 @@ static void FFRangesCallback(task_t task, void *baton, unsigned type,
             continue;
         }
         
+        callback((__bridge id)(data),isa,&shouldStop);
         
-        if (![(__bridge id)data respondsToSelector:NSSelectorFromString(@"retain")]) {
-            continue;
+        if (shouldStop) {
+            break;
         }
-        
-        [ff_result_instances addObject:(__bridge id _Nullable)(data)];
     }
 }
 
-static void FFChooseClass()
+static void FFChooseClass(ff_object_enumeration_block_t enumurator)
 {
     vm_address_t *zones;
     unsigned size;
@@ -167,20 +190,18 @@ static void FFChooseClass()
         return;
     }
     
-    NSLog(@"total zone count:%u",size);
-    int maxResultCount = 1000;
     
     for (int i=0; i<size; ++i) {
-        NSLog(@"%d",i);
-        const malloc_zone_t *zone = (malloc_zone_t*)zones[i];
+        vm_address_t zoneAddress = zones[i];
+        malloc_zone_t *zone = (malloc_zone_t*)zones[i];
         if (zone == NULL || zone->introspect == NULL)
             continue;
         
         @try {
-            zone->introspect->enumerator(mach_task_self(),NULL,MALLOC_PTR_IN_USE_RANGE_TYPE,zones[i],&FFReadMemory,FFRangesCallback);
-            if (ff_result_instances.count > maxResultCount) {
-                break;
-            }
+            zone->introspect->force_lock(zone);
+            zone->introspect->enumerator(mach_task_self(),(__bridge void *)(enumurator),MALLOC_PTR_IN_USE_RANGE_TYPE,zoneAddress,&FFReadMemory,FFRangesCallback);
+        
+            zone->introspect->force_unlock(zone);
         } @catch (NSException *exception) {
             
         }

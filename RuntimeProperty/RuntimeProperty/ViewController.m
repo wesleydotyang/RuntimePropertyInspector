@@ -9,6 +9,7 @@
 #import "ViewController.h"
 #import "FFPropertyInspectView.h"
 #import "FFPropertyInspector.h"
+#import "FFPropertyInspectViewController.h"
 #import "AppDelegate.h"
 #import <objc/runtime.h>
 #import <WebKit/WebKit.h>
@@ -73,21 +74,17 @@
     testObj.image = [UIImage imageNamed:@"test"];
     self.inspectView.inspectingObject = testObj;
     
-    
-    [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer * _Nonnull timer) {
-        id obj = self.inspectView.inspectingObject;
-        NSLog(@"");
-    }];
-    
-
-    NSArray *res = [FFPropertyInspector searchForInstancesOfClassMatch:@"ViewController"];
-    
-    
 }
 
 +(void)testFunc:(NSArray*)a va:(NSString*)b
 {
     
 }
+
+- (IBAction)doRightNaviAction:(id)sender {
+    FFPropertyInspectViewController *vc = [[FFPropertyInspectViewController alloc] init];
+    [self.navigationController pushViewController:vc animated:YES];
+}
+
 
 @end

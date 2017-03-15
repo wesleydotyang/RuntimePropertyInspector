@@ -18,6 +18,7 @@
 		C94AA4411CE1CF1E00DF3C06 /* FFPropertyInspectView.m in Sources */ = {isa = PBXBuildFile; fileRef = C94AA4401CE1CF1E00DF3C06 /* FFPropertyInspectView.m */; };
 		C94AA4831CE2D99200DF3C06 /* FFInstanceNode.m in Sources */ = {isa = PBXBuildFile; fileRef = C94AA4821CE2D99200DF3C06 /* FFInstanceNode.m */; };
 		C9CEF6A21E6FE1DC00B092EF /* FFPropertyViewerView.m in Sources */ = {isa = PBXBuildFile; fileRef = C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */; };
+		C9F1CF681E7915580054937F /* FFPropertyInspectViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C9F1CF671E7915580054937F /* FFPropertyInspectViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,8 @@
 		C94AA4821CE2D99200DF3C06 /* FFInstanceNode.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFInstanceNode.m; sourceTree = "<group>"; };
 		C9CEF6A01E6FE1DC00B092EF /* FFPropertyViewerView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFPropertyViewerView.h; sourceTree = "<group>"; };
 		C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFPropertyViewerView.m; sourceTree = "<group>"; };
+		C9F1CF661E7915580054937F /* FFPropertyInspectViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FFPropertyInspectViewController.h; sourceTree = "<group>"; };
+		C9F1CF671E7915580054937F /* FFPropertyInspectViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FFPropertyInspectViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,16 +130,26 @@
 		C94AA4381CE1CC3700DF3C06 /* RuntimeProperty */ = {
 			isa = PBXGroup;
 			children = (
+				C9F1CF691E7915620054937F /* UserInterface */,
 				C94AA43C1CE1CC9E00DF3C06 /* FFPropertyInspector.h */,
 				C94AA43D1CE1CC9E00DF3C06 /* FFPropertyInspector.m */,
-				C94AA43F1CE1CF1E00DF3C06 /* FFPropertyInspectView.h */,
-				C94AA4401CE1CF1E00DF3C06 /* FFPropertyInspectView.m */,
-				C9CEF6A01E6FE1DC00B092EF /* FFPropertyViewerView.h */,
-				C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */,
 				C94AA4811CE2D99200DF3C06 /* FFInstanceNode.h */,
 				C94AA4821CE2D99200DF3C06 /* FFInstanceNode.m */,
 			);
 			path = RuntimeProperty;
+			sourceTree = "<group>";
+		};
+		C9F1CF691E7915620054937F /* UserInterface */ = {
+			isa = PBXGroup;
+			children = (
+				C94AA43F1CE1CF1E00DF3C06 /* FFPropertyInspectView.h */,
+				C94AA4401CE1CF1E00DF3C06 /* FFPropertyInspectView.m */,
+				C9CEF6A01E6FE1DC00B092EF /* FFPropertyViewerView.h */,
+				C9CEF6A11E6FE1DC00B092EF /* FFPropertyViewerView.m */,
+				C9F1CF661E7915580054937F /* FFPropertyInspectViewController.h */,
+				C9F1CF671E7915580054937F /* FFPropertyInspectViewController.m */,
+			);
+			name = UserInterface;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -245,6 +258,7 @@
 				C94AA4831CE2D99200DF3C06 /* FFInstanceNode.m in Sources */,
 				C94AA41B1CE1CBED00DF3C06 /* ViewController.m in Sources */,
 				C94AA4181CE1CBED00DF3C06 /* AppDelegate.m in Sources */,
+				C9F1CF681E7915580054937F /* FFPropertyInspectViewController.m in Sources */,
 				C94AA4151CE1CBED00DF3C06 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
