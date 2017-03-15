@@ -51,6 +51,8 @@
     FFInstanceNode *node;
     //inspect BOOL ivar
     node = [FFPropertyInspector nodeDataForInstance:obj];
+    [FFPropertyInspector expandInstanceNode:node];
+    
     FFInstanceNode *retNode = [node  ivarNamed:@"testBOOL"];
     XCTAssertNotNil(retNode);
     XCTAssertEqual(retNode.rawValue, @YES);

@@ -73,8 +73,6 @@
     testObj.image = [UIImage imageNamed:@"test"];
     self.inspectView.inspectingObject = testObj;
     
-    AppDelegate *app = [UIApplication sharedApplication].delegate;
-    id var = [app valueForKeyPath:@"testVar"];
     
     [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer * _Nonnull timer) {
         id obj = self.inspectView.inspectingObject;
@@ -82,7 +80,7 @@
     }];
     
 
-    NSArray *res = [FFPropertyInspector searchForInstancesOfClassMatch:@"iewController"];
+    NSArray *res = [FFPropertyInspector searchForInstancesOfClassMatch:@"ViewController"];
     
     
 }

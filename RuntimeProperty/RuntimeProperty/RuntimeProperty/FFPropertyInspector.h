@@ -29,7 +29,7 @@
 +(BOOL)alterIvar:(FFIVarNode*)ivar toValue:(id)value;
 
 
-+(NSArray<NSValue*>*)searchForInstancesOfClassMatch:(NSString *)match;
++(NSArray*)searchForInstancesOfClassMatch:(NSString *)match;
 
 @end
 

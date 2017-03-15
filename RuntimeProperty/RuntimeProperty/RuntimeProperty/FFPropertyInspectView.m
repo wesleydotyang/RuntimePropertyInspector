@@ -33,11 +33,12 @@ typedef void(^FFInputValueCallback)(id value);
 +(CGFloat)heightForNode:(FFInstanceNode*)node totalWid:(CGFloat)totalWid;
 @end
 
-@interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource,UIAlertViewDelegate,FFPopertyCellDelegate>
+@interface FFPropertyInspectView()<UITableViewDelegate,UITableViewDataSource,UIAlertViewDelegate,FFPopertyCellDelegate,UISearchResultsUpdating>
 
 @property (nonatomic) UITableView *tableView;
+@property (nonatomic) UISearchController *searchController;
 
-@property (nonatomic,strong) FFInstanceNode *rootNode;
+@property (nonatomic,strong) NSArray<FFInstanceNode*> *rootNodes;
 
 @property (nonatomic,strong) NSArray<FFInstanceNode*> *tableDisplayNodes;
 
@@ -66,13 +67,27 @@ typedef void(^FFInputValueCallback)(id value);
 -(void)setupThis
 {
     [self addSubview:self.tableView];
+    [self setupSearchController];
+}
+
+-(void)setupSearchController
+{
+    self.searchController = [[UISearchController alloc]initWithSearchResultsController:nil];
+    self.searchController.searchBar.frame = CGRectMake(0, 0, 0, 44);
+    self.searchController.dimsBackgroundDuringPresentation = false;
+    //搜索栏表头视图
+    self.tableView.tableHeaderView = self.searchController.searchBar;
+    [self.searchController.searchBar sizeToFit];
+
+    self.searchController.searchResultsUpdater = self;
 }
 
 -(void)setInspectingObject:(id)inspectingObject
 {
     _inspectingObject = inspectingObject;
     
-    self.rootNode = [FFPropertyInspector nodeDataForInstance:_inspectingObject];
+    self.rootNodes = [NSMutableArray array];
+    [(NSMutableArray*)self.rootNodes addObject:[FFPropertyInspector nodeDataForInstance:_inspectingObject]];
     [self reloadTableData];
     
 }
@@ -90,7 +105,9 @@ typedef void(^FFInputValueCallback)(id value);
 -(void)reloadTableData
 {
     NSMutableArray *tableData = [NSMutableArray array];
-    [self appendTableData:tableData forNode:self.rootNode];
+    for (FFInstanceNode *node in self.rootNodes) {
+        [self appendTableData:tableData forNode:node];
+    }
     self.tableDisplayNodes = tableData;
     [self.tableView reloadData];
 }
@@ -126,6 +143,40 @@ typedef void(^FFInputValueCallback)(id value);
 {
     [super layoutSubviews];
     self.tableView.frame = self.bounds;
+}
+
+- (void)updateSearchResultsForSearchController:(UISearchController *)searchController
+{
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(myUpdateSearchResults) object:nil];
+    [self performSelector:@selector(myUpdateSearchResults) withObject:nil afterDelay:1];
+}
+
+-(void)myUpdateSearchResults
+{
+    NSString *query = self.searchController.searchBar.text;
+    if (query.length != 0) {
+        NSArray *result = [FFPropertyInspector searchForInstancesOfClassMatch:query];
+        
+        NSMutableDictionary<NSString*,FFInstanceNode*> *classDic = [NSMutableDictionary dictionary];
+        for (NSValue *value in result) {
+            NSString *className = NSStringFromClass([value class]);
+            if (!classDic[className]) {
+                FFInstanceNode *node = [[FFInstanceNode alloc] init];
+                node.instanceName = className;
+                node.instanceType = className;
+                node.elements = [NSMutableArray array];
+                classDic[className] = node;
+            }
+            FFInstanceNode *cnode = [FFPropertyInspector nodeDataForInstance:value];
+            cnode.depth = 1;
+            [(NSMutableArray*)classDic[className].elements addObject:cnode];
+        }
+        
+        self.rootNodes = classDic.allValues;
+ 
+    }
+    
+    [self reloadTableData];
 }
 
 -(UITableView *)tableView
@@ -167,6 +218,9 @@ typedef void(^FFInputValueCallback)(id value);
     if ([self isNodeExpanded:node] == NO) {
         if ([eidtableTypes containsObject:node.instanceType]) {
             [self modifyNode:node];
+        }else if([node isKindOfClass:[FFMethodNode class]]){
+            [self callMethodOnNode:node];
+        
         }else{
             [FFPropertyInspector expandInstanceNode:node];
             [self setNode:node expanded:YES];
@@ -182,9 +236,31 @@ typedef void(^FFInputValueCallback)(id value);
 -(void)propertyCellDidTapDetailButton:(FFPropertyCell *)cell
 {
     //view property detail
-    FFPropertyViewerView *viewer = [[FFPropertyViewerView alloc] initWithFrame:self.bounds];
+    FFPropertyViewerView *viewer = [[FFPropertyViewerView alloc] initWithFrame:CGRectMake(0, 44, self.frame.size.width, self.frame.size.height-44)];
     viewer.targetObject = cell.nodeData.rawValue;
     [self addSubview:viewer];
+}
+
+-(void)callMethodOnNode:(FFMethodNode*)node
+{
+    SEL selector = NSSelectorFromString(node.methodName);
+    NSObject *target = node.parentNode.rawValue;
+    if (selector && target){
+        NSMethodSignature *signature = [target methodSignatureForSelector:selector];
+        NSInvocation* invocation = [NSInvocation invocationWithMethodSignature:signature];
+        [invocation setTarget:target];
+        [invocation setSelector:selector];
+        NSUInteger argC = signature.numberOfArguments;
+        if (argC == 2) {
+            [invocation invoke];
+        }
+       
+//        [invocation setArgument:&params atIndex:2];
+//        [invocation setArgument:&data atIndex:3];
+
+    }
+
+
 }
 
 -(void)modifyNode:(FFInstanceNode*)node
@@ -341,9 +417,10 @@ typedef void(^FFInputValueCallback)(id value);
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    self.nameLabel.frame = CGRectMake(10+INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, 0, self.frame.size.width-INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, self.frame.size.height);
-    self.infoButton.frame = CGRectMake(self.frame.size.width - 35, 0, 35, self.frame.size.height);
     float titleWid = [self.nameLabel.text sizeWithAttributes:@{NSFontAttributeName:self.nameLabel.font}].width;
+    titleWid = MIN(self.frame.size.width/2,titleWid);
+    self.nameLabel.frame = CGRectMake(10+INDENT_DISTANCE_PER_LEVEL*self.nodeData.depth, 0, titleWid, self.frame.size.height);
+    self.infoButton.frame = CGRectMake(self.frame.size.width - 35, 0, 35, self.frame.size.height);
 
     self.detailLabel.frame = CGRectMake(CGRectGetMinX(self.nameLabel.frame)+titleWid+10,0, self.frame.size.width - CGRectGetMinX(self.nameLabel.frame)-titleWid - 10- CGRectGetWidth(self.infoButton.frame), self.frame.size.height);
     
@@ -379,8 +456,14 @@ typedef void(^FFInputValueCallback)(id value);
     NSMutableAttributedString *attString = [[NSMutableAttributedString alloc] init];
     NSAttributedString *typeAtt = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"(%@)",node.instanceType] attributes:@{NSForegroundColorAttributeName:[UIColor lightGrayColor]}];
     NSString *valueStr;
+    
     if (node.rawValueValid && !node.inheritClassNode) {
-        valueStr = [NSString stringWithFormat:@"%@",node.rawValue];
+        if (node.safeToUseRawValue) {
+            valueStr = [NSString stringWithFormat:@"%@",node.rawValue];
+        }else{
+            valueStr = [NSString stringWithFormat:@"%p",node.rawValue];
+        }
+        
         if (limitDetail) {
             if (valueStr.length > 40) {
                 valueStr = [[valueStr substringToIndex:40] stringByAppendingString:@"..."];
@@ -400,7 +483,7 @@ typedef void(^FFInputValueCallback)(id value);
 {
     NSString *title = [self titleDescriptionForNode:node];
     NSString *detail = [self detailDescriptionForNode:node limitDetail:YES].string;
-    float titleWid = [title sizeWithAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:11]}].width;
+    float titleWid = MIN(totalWid/2,[title sizeWithAttributes:@{NSFontAttributeName:[UIFont systemFontOfSize:11]}].width);
     float detailWid = totalWid - titleWid - 65 - INDENT_DISTANCE_PER_LEVEL*node.depth;
     float detailHeight = [detail boundingRectWithSize:CGSizeMake(detailWid, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin attributes:@{NSFontAttributeName:[UIFont systemFontOfSize:9]} context:nil].size.height;
     return MAX(33, detailHeight + 15);

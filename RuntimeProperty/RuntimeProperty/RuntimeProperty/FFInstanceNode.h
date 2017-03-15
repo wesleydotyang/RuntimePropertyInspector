@@ -69,6 +69,8 @@
  *  class methods of this object
  */
 @property (nonatomic,strong) NSArray<FFMethodNode*> *classMethods;
+
+@property (nonatomic,assign) BOOL safeToUseRawValue;
 /**
  *  user defined infos
  */

@@ -46,6 +46,21 @@
     return nil;
 }
 
+-(void)setRawValue:(id)rawValue
+{
+    _rawValue = rawValue;
+    NSArray *supportedClassDesc = @[@"NSNumber",@"NSString"];
+
+    for (NSString *cls in supportedClassDesc) {
+        if([rawValue isKindOfClass:NSClassFromString(cls)]){
+            _safeToUseRawValue = YES;
+            break;
+        }
+    }
+
+}
+
+
 @end
 
 

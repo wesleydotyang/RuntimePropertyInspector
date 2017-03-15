@@ -14,6 +14,7 @@
 #import <objc/message.h>
 #import <mach/mach.h>
 #import <malloc/malloc.h>
+#import <time.h>
 
 
 struct FFObjectStruct {
@@ -37,6 +38,7 @@ static Class* FFGetAllClassList(size_t *size)
     }
     
     int numClasses = objc_getClassList(NULL, 0);
+    classes_size = numClasses;
     *size = numClasses;
 
     if (numClasses > 0 )
@@ -55,38 +57,53 @@ static Class* FFGetClassesMatchString(NSString *query,size_t *result_size)
     size_t maxClasses = 1000;
     Class *results = (Class*)malloc(sizeof(Class)*maxClasses);
     int count = 0;
+    NSArray *blackList = @[@"NSAutoreleasePool",@"NSPlaceholderValue"];
     for (int i=0; i<size && count<maxClasses; ++i) {
         Class cls = allClasses[i];
         NSString *clsName = NSStringFromClass(cls);
-        if ([clsName rangeOfString:query].location != NSNotFound) {
+        //debug print all classes
+//        NSLog(@"Class:%@",clsName);
+
+        if ([clsName rangeOfString:query].location != NSNotFound || query.length==0) {
+            if ([blackList containsObject:clsName]) {
+                continue;
+            }
+            if ([clsName hasPrefix:@"_"] || [clsName hasPrefix:@"FF"] || [clsName hasPrefix:@"NSCF"] || [clsName hasPrefix:@"NSTag"]) {
+                continue;
+            }
+            
             results[count] = cls;
             count++;
         }
     }
     *result_size = count;
+    
     return results;
 }
 
-static NSDictionary<NSValue*,NSString*> *ff_filter_classes_table;//store filter classes
-static NSMutableArray<NSValue*> *ff_result_instances;//store result(weak obj)
+static NSDictionary<NSString*,NSObject*> *ff_filter_classes_table;//store filter classes
+static NSMutableArray *ff_result_instances;//store result
 
 static void FFChooseClass();
 
 static NSArray<NSObject*>* FFGetInstancesOfClassesMatchString(NSString* query){
+    CFTimeInterval startTime = CACurrentMediaTime();
     size_t count;
     Class *filter_classes = FFGetClassesMatchString(query,&count);
     NSMutableDictionary *dic = [NSMutableDictionary dictionary];
 
     for (int i=0;i<count;++i) {
         Class cls = filter_classes[i];
-        [dic setObject:NSStringFromClass(cls) forKey:[NSValue valueWithPointer:(__bridge const void * _Nullable)(cls)]];
+        [dic setObject:@1 forKey:[NSString stringWithFormat:@"%p",cls]];
     }
+    
     ff_filter_classes_table = dic;
     free(filter_classes);
     
     ff_result_instances = [NSMutableArray array];
     FFChooseClass();
     
+    NSLog(@"CostTime %dms",(int)((CACurrentMediaTime()-startTime)*1000));
     return ff_result_instances;
 }
 
@@ -104,11 +121,19 @@ static void FFRangesCallback(task_t task, void *baton, unsigned type,
         void *ptr = (void*)(pointers[0] & 0x1fffffff8);
         Class isa = (__bridge Class)ptr;
         
-        id searchResult = ff_filter_classes_table[[NSValue valueWithPointer:(__bridge const void * _Nullable)(isa)]];
+        if (ptr == (void*)0x100000000) {
+            continue;
+        }
+        
+        NSString *key = [NSString stringWithFormat:@"%p",isa];
+        id searchResult = ff_filter_classes_table[key];
         if (!searchResult) {
             continue;
         }
         
+        if ((__bridge id)data == ff_result_instances || (__bridge id)data == ff_filter_classes_table) {
+            continue;
+        }
         size_t needed = class_getInstanceSize(isa);
         size_t boundary = 496;
 #ifdef __LP64__
@@ -116,8 +141,20 @@ static void FFRangesCallback(task_t task, void *baton, unsigned type,
 #endif
         if ((needed <= boundary && (needed + 15) / 16 * 16 != size) || (needed > boundary && (needed + 511) / 512 * 512 != size))
             continue;
+        // Check the allocation size
+        size_t allocated_size = malloc_size(data);
+        size_t instance_size = class_getInstanceSize(isa);
+        if (allocated_size < instance_size)
+        {
+            continue;
+        }
         
-        [ff_result_instances addObject:[NSValue valueWithNonretainedObject:(__bridge id _Nullable)(data)]];
+        
+        if (![(__bridge id)data respondsToSelector:NSSelectorFromString(@"retain")]) {
+            continue;
+        }
+        
+        [ff_result_instances addObject:(__bridge id _Nullable)(data)];
     }
 }
 
@@ -138,10 +175,16 @@ static void FFChooseClass()
         const malloc_zone_t *zone = (malloc_zone_t*)zones[i];
         if (zone == NULL || zone->introspect == NULL)
             continue;
-        zone->introspect->enumerator(mach_task_self(),NULL,MALLOC_PTR_IN_USE_RANGE_TYPE,zones[i],&FFReadMemory,FFRangesCallback);
-        if (ff_result_instances.count > maxResultCount) {
-            break;
+        
+        @try {
+            zone->introspect->enumerator(mach_task_self(),NULL,MALLOC_PTR_IN_USE_RANGE_TYPE,zones[i],&FFReadMemory,FFRangesCallback);
+            if (ff_result_instances.count > maxResultCount) {
+                break;
+            }
+        } @catch (NSException *exception) {
+            
         }
+        
     }
 }
 
@@ -164,7 +207,7 @@ static NSString *extractStructName(NSString *typeEncodeString)
 
 @implementation FFPropertyInspector
 
-+(NSArray<NSValue*>*)searchForInstancesOfClassMatch:(NSString *)match
++(NSArray*)searchForInstancesOfClassMatch:(NSString *)match
 {
     return FFGetInstancesOfClassesMatchString(match);
 }
@@ -280,6 +323,7 @@ static NSString *extractStructName(NSString *typeEncodeString)
         Method method = methods[i];
         FFMethodNode *methodNode = [FFMethodNode new];
         methodNode.methodName = NSStringFromSelector(method_getName(method));
+        methodNode.parentNode = node;
         methodNode.depth = node.depth+1;
         if ([methodNode.methodName hasPrefix:@"."]) {//hidden methods
             continue;
